@@ -5,8 +5,18 @@ mod wmvcore_wrapper;
 
 pub use wmvcore_wrapper::WMCreateReader;
 
+extern "stdcall" {
+    fn AllocConsole();
+}
+
+use log::debug;
+
 fn initialize() {
-    win_dbg_logger::init();
+    unsafe { AllocConsole() };
+    let _ = pretty_env_logger::formatted_timed_builder()
+        .filter_level(log::LevelFilter::Debug)
+        .try_init();
+    debug!("ffxiv_data_loader init");
 
     unsafe { hook::initialize_hook().unwrap() };
 }
