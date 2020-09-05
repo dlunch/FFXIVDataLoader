@@ -1,16 +1,12 @@
-#![allow(non_snake_case)]
-
-use dlopen::wrapper::{Container, WrapperApi};
 use widestring::WideCString;
 
 extern "stdcall" {
     fn GetSystemDirectoryW(lp_buffer: *mut u16, u_size: u32) -> u32;
+    fn LoadLibraryW(lp_lib_file_name: *const u16) -> u64;
+    fn GetProcAddress(h_module: u64, lp_proc_name: *const u8) -> u64;
 }
 
-#[derive(dlopen_derive::WrapperApi)]
-struct WmvCore {
-    WMCreateReader: extern "stdcall" fn(p_unk_cert: u64, dw_rights: u64, pp_reader: u64) -> u64,
-}
+type WMCreateReader = extern "stdcall" fn(p_unk_cert: u64, dw_rights: u64, pp_reader: u64) -> u64;
 
 #[no_mangle]
 #[allow(clippy::missing_safety_doc)]
@@ -28,7 +24,9 @@ pub unsafe extern "stdcall" fn WMCreateReader(
         .unwrap();
     let wmvcore_path = format!("{}\\wmvcore.dll", system_path);
 
-    let cont: Container<WmvCore> = Container::load(wmvcore_path).unwrap();
+    let wmvcore = LoadLibraryW(WideCString::from_str(wmvcore_path).unwrap().as_ptr());
+    let wm_create_reader: WMCreateReader =
+        std::mem::transmute(GetProcAddress(wmvcore, "WMCreateReader".as_ptr()));
 
-    cont.WMCreateReader(p_unk_cert, dw_rights, pp_reader)
+    wm_create_reader(p_unk_cert, dw_rights, pp_reader)
 }
