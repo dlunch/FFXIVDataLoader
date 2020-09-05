@@ -1,0 +1,12 @@
+[package]
+name = "ffxiv_data_loader"
+version = "0.1.0"
+authors = ["Inseok Lee <dlunch@gmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+dlopen = { version = "^0.1" }
+dlopen_derive = { version = "^0.1" }
