@@ -1,9 +1,9 @@
 #![cfg(windows)]
 
+mod dinput_wrapper;
 mod hook;
-mod wmvcore_wrapper;
 
-pub use wmvcore_wrapper::WMCreateReader;
+pub use dinput_wrapper::DirectInput8Create;
 
 extern "stdcall" {
     fn AllocConsole();
