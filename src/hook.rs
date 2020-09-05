@@ -1,18 +1,7 @@
 use detour::GenericDetour;
+use dlopen::raw::Library;
 use log::debug;
 use widestring::WideCStr;
-
-extern "stdcall" {
-    fn CreateFileW(
-        lp_file_name: *const u16,
-        dw_desired_access: u32,
-        dw_share_mode: u32,
-        lp_security_attributes: u64,
-        dw_creation_disposition: u32,
-        dw_flags_and_attributes: u32,
-        h_template_file: u64,
-    ) -> u64;
-}
 
 type FnCreateFileW = extern "stdcall" fn(*const u16, u32, u32, u64, u32, u32, u64) -> u64;
 
@@ -44,7 +33,8 @@ extern "stdcall" fn hooked_create_file_w(
 }
 
 pub unsafe fn initialize_hook() -> Result<(), detour::Error> {
-    let create_file_w = std::mem::transmute(CreateFileW as *const u64);
+    let lib = Library::open("kernel32.dll").unwrap();
+    let create_file_w = lib.symbol("CreateFileW").unwrap();
 
     CREATE_FILE_W_HOOK.replace(GenericDetour::<FnCreateFileW>::new(
         create_file_w,
@@ -52,6 +42,8 @@ pub unsafe fn initialize_hook() -> Result<(), detour::Error> {
     )?);
 
     CREATE_FILE_W_HOOK.as_ref().unwrap().enable()?;
+
+    debug!("hook createfilew {:?}", create_file_w as *const u64);
 
     Ok(())
 }
