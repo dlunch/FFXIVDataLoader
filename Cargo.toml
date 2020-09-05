@@ -10,3 +10,4 @@ crate-type = ["cdylib"]
 [dependencies]
 dlopen = { version = "^0.1" }
 dlopen_derive = { version = "^0.1" }
+detour = { version = "0.7.1", default-features = false }
