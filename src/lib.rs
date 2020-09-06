@@ -3,6 +3,7 @@
 
 mod dinput_wrapper;
 mod sqpack_redirector;
+mod virtual_sqpack;
 
 pub use dinput_wrapper::DirectInput8Create;
 

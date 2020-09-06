@@ -1,6 +1,11 @@
+use std::env;
+use std::path::{Path, PathBuf};
+
 use detour::GenericDetour;
 use log::debug;
 use widestring::{WideCStr, WideCString};
+
+use crate::virtual_sqpack::VirtualSqPack;
 
 extern "stdcall" {
     fn GetModuleHandleW(lp_module_name: *const u16) -> u64;
@@ -12,6 +17,7 @@ type FnCreateFileW = extern "stdcall" fn(*const u16, u32, u32, u64, u32, u32, u6
 static mut SQPACK_REDIRECTOR: Option<SqPackRedirector> = None;
 
 pub struct SqPackRedirector {
+    virtual_sqpack: VirtualSqPack,
     create_file_w: GenericDetour<FnCreateFileW>,
 }
 
@@ -26,15 +32,24 @@ impl SqPackRedirector {
         )?;
         create_file_w.enable()?;
 
-        let redirector = Self { create_file_w };
+        let mut path = env::current_exe().unwrap();
+        path.pop();
+        path.push("sqpack");
 
+        let virtual_sqpack = VirtualSqPack::new(&path);
+
+        let redirector = Self {
+            virtual_sqpack,
+            create_file_w,
+        };
         SQPACK_REDIRECTOR.replace(redirector);
-        SQPACK_REDIRECTOR.as_mut().unwrap().do_start();
 
         Ok(())
     }
 
-    fn do_start(&mut self) {}
+    fn create_virtual_file_handle(&self, path: &Path) -> u64 {
+        0
+    }
 
     #[allow(clippy::too_many_arguments)]
     extern "stdcall" fn hooked_create_file_w(
@@ -46,20 +61,25 @@ impl SqPackRedirector {
         dw_flags_and_attributes: u32,
         h_template_file: u64,
     ) -> u64 {
-        let filename = unsafe { WideCStr::from_ptr_str(lp_file_name) };
-        debug!("{}", filename.to_string().unwrap());
+        let _self = unsafe { SQPACK_REDIRECTOR.as_ref().unwrap() };
+        let path = PathBuf::from(unsafe { WideCStr::from_ptr_str(lp_file_name) }.to_os_string());
+        debug!("{:?}", path);
 
-        unsafe {
-            let _self = SQPACK_REDIRECTOR.as_ref().unwrap();
-            _self.create_file_w.call(
-                lp_file_name,
-                dw_desired_access,
-                dw_share_mode,
-                lp_security_attributes,
-                dw_creation_disposition,
-                dw_flags_and_attributes,
-                h_template_file,
-            )
+        if _self.virtual_sqpack.is_hooked_file(&path) {
+            _self.create_virtual_file_handle(&path)
+        } else {
+            #[allow(unused_unsafe)] // clippy bug?
+            unsafe {
+                _self.create_file_w.call(
+                    lp_file_name,
+                    dw_desired_access,
+                    dw_share_mode,
+                    lp_security_attributes,
+                    dw_creation_disposition,
+                    dw_flags_and_attributes,
+                    h_template_file,
+                )
+            }
         }
     }
 }

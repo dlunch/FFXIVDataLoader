@@ -12,3 +12,5 @@ detour = { version = "0.7.1", default-features = false }
 widestring = { version = "^0.4" }
 log = { version = "^0.4" }
 pretty_env_logger = { version = "^0.4" }
+
+sqpack = { version = "^0.1", git = "https://github.com/dlunch/sqpack" }
