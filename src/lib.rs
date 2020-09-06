@@ -2,7 +2,7 @@
 #![cfg(target_arch = "x86_64")]
 
 mod dinput_wrapper;
-mod hook;
+mod sqpack_redirector;
 
 pub use dinput_wrapper::DirectInput8Create;
 
@@ -19,7 +19,7 @@ fn initialize() {
         .try_init();
     debug!("ffxiv_data_loader init");
 
-    unsafe { hook::initialize_hook().unwrap() };
+    unsafe { sqpack_redirector::SqPackRedirector::start().unwrap() };
 }
 
 #[no_mangle]
