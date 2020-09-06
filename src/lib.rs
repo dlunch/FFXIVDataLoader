@@ -1,4 +1,5 @@
 #![cfg(windows)]
+#![cfg(target_arch = "x86_64")]
 
 mod dinput_wrapper;
 mod hook;
