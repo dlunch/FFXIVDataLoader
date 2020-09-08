@@ -11,6 +11,8 @@ extern "stdcall" {
     fn AllocConsole();
 }
 
+use std::env;
+
 use log::debug;
 
 fn initialize() {
@@ -20,7 +22,11 @@ fn initialize() {
         .try_init();
     debug!("ffxiv_data_loader init");
 
-    unsafe { sqpack_redirector::SqPackRedirector::start().unwrap() };
+    let mut path = env::current_exe().unwrap();
+    path.pop();
+    path.push("sqpack");
+
+    unsafe { sqpack_redirector::SqPackRedirector::start(&path).unwrap() };
 }
 
 #[no_mangle]

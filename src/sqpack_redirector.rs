@@ -1,4 +1,3 @@
-use std::env;
 use std::path::{Path, PathBuf};
 
 use detour::GenericDetour;
@@ -22,7 +21,7 @@ pub struct SqPackRedirector {
 }
 
 impl SqPackRedirector {
-    pub unsafe fn start() -> detour::Result<()> {
+    pub unsafe fn start(base_dir: &Path) -> detour::Result<()> {
         let kernel32 = GetModuleHandleW(WideCString::from_str("kernel32.dll").unwrap().as_ptr());
         let create_file_w_address = GetProcAddress(kernel32, "CreateFileW".as_ptr());
 
@@ -32,11 +31,7 @@ impl SqPackRedirector {
         )?;
         create_file_w.enable()?;
 
-        let mut path = env::current_exe().unwrap();
-        path.pop();
-        path.push("sqpack");
-
-        let virtual_sqpack = VirtualSqPack::new(&path);
+        let virtual_sqpack = VirtualSqPack::new(base_dir);
 
         let redirector = Self {
             virtual_sqpack,
