@@ -38,10 +38,14 @@ impl VirtualSqPack {
         };
 
         for entry in WalkDir::new(data_path).into_iter().filter_map(std::result::Result::ok) {
-            let path = entry.path();
-            let relative = diff_paths(path, data_path).unwrap();
+            if entry.file_type().is_file() {
+                let path = entry.path();
+                let relative = diff_paths(path, data_path).unwrap();
 
-            result.add_file(path, relative.as_os_str().to_str().unwrap()).await?
+                let archive_path = relative.as_os_str().to_str().unwrap().replace("\\", "/");
+
+                result.add_file(path, &archive_path).await?
+            }
         }
 
         Ok(result)
@@ -56,7 +60,7 @@ impl VirtualSqPack {
     }
 
     async fn add_file(&mut self, file_path: &Path, archive_path: &str) -> Result<()> {
-        debug!("Adding {:?}", file_path);
+        debug!("Adding {:?} as {:?}", file_path, archive_path);
 
         let archive_id = SqPackArchiveId::from_file_path(archive_path);
         let archive = self.package.archive(archive_id).await?;
