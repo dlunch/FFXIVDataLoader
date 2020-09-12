@@ -13,7 +13,10 @@ extern "stdcall" {
 
 use std::env;
 
+use async_std::task;
 use log::debug;
+
+use virtual_sqpack::VirtualSqPack;
 
 fn initialize() {
     unsafe { AllocConsole() };
@@ -22,11 +25,18 @@ fn initialize() {
         .try_init();
     debug!("ffxiv_data_loader init");
 
-    let mut path = env::current_exe().unwrap();
-    path.pop();
-    path.push("sqpack");
+    let mut base_dir = env::current_exe().unwrap();
+    base_dir.pop();
 
-    unsafe { sqpack_redirector::SqPackRedirector::start(&path).unwrap() };
+    let mut sqpack_path = base_dir.clone();
+    sqpack_path.push("sqpack");
+
+    let mut data_path = base_dir;
+    data_path.push("data");
+
+    let virtual_sqpack = task::block_on(async { VirtualSqPack::new(&sqpack_path, &data_path).await.unwrap() });
+
+    unsafe { sqpack_redirector::SqPackRedirector::start(virtual_sqpack).unwrap() };
 }
 
 #[no_mangle]
