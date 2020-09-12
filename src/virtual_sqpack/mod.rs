@@ -1,32 +1,30 @@
-use std::{
-    collections::HashMap,
-    fs, io,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use log::debug;
-use sqpack::SqPackArchiveId;
-
-use crate::util::cast;
+use sqpack::{Result, SqPackArchiveId, SqPackFileReference, SqPackPackage};
 
 pub struct VirtualSqPack {
-    indexes: HashMap<SqPackArchiveId, Vec<u8>>,
+    package: SqPackPackage,
     base_dir: PathBuf,
 }
 
 impl VirtualSqPack {
-    pub fn new(base_dir: &Path) -> Self {
-        Self {
-            indexes: HashMap::new(),
+    pub fn new(base_dir: &Path) -> Result<Self> {
+        Ok(Self {
+            package: SqPackPackage::new(base_dir)?,
             base_dir: base_dir.into(),
-        }
+        })
     }
 
-    pub fn add_file(&mut self, path: &str) -> io::Result<()> {
+    pub async fn add_file(&mut self, path: &str) -> Result<()> {
+        debug!("Adding {}", path);
+
         let archive_id = SqPackArchiveId::from_file_path(path);
-        if !self.indexes.contains_key(&archive_id) {
-            self.load_index(&archive_id)?;
-        }
+        let archive = self.package.archive(archive_id).await?;
+
+        let reference = SqPackFileReference::new(path);
+
+        archive.write().await.index.write_offset(reference.hash.folder, reference.hash.file, 0)?;
 
         Ok(())
     }
@@ -35,32 +33,8 @@ impl VirtualSqPack {
         false
     }
 
-    pub fn read_hooked_file(&self, path: &Path, offset: u64) -> Vec<u8> {
+    pub fn read_hooked_file(&self, path: &Path, offset: u64, size: u64) -> Vec<u8> {
         Vec::new()
-    }
-
-    fn load_index(&mut self, archive_id: &SqPackArchiveId) -> io::Result<()> {
-        let index_path = format!(
-            "{:02x}{:02x}{:02x}.win32.index",
-            archive_id.root, archive_id.ex, archive_id.part
-        );
-        let base_path = if archive_id.ex == 0 {
-            "ffxiv".into()
-        } else {
-            format!("ex{}", archive_id.ex)
-        };
-
-        let mut path = self.base_dir.clone();
-        path.push(base_path);
-        path.push(index_path);
-
-        debug!("Loading index {:?}", &path);
-
-        let data = fs::read(path)?;
-
-        self.indexes.insert(*archive_id, data);
-
-        Ok(())
     }
 }
 
@@ -68,17 +42,15 @@ impl VirtualSqPack {
 mod test {
     use super::*;
 
-    #[test]
-    fn test_virtual_sqpack() -> io::Result<()> {
+    #[async_std::test]
+    async fn test_virtual_sqpack() -> Result<()> {
         let _ = pretty_env_logger::formatted_timed_builder()
             .filter_level(log::LevelFilter::Debug)
             .try_init();
 
-        let mut virtual_sqpack = VirtualSqPack::new(Path::new(
-            "D:\\games\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack",
-        ));
+        let mut virtual_sqpack = VirtualSqPack::new(Path::new("D:\\games\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack"))?;
 
-        virtual_sqpack.add_file("common/font1.tex")?;
+        virtual_sqpack.add_file("common/font1.tex").await?;
 
         Ok(())
     }

@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::path::{Path, PathBuf};
 
 use detour::GenericDetour;
@@ -21,17 +22,14 @@ pub struct SqPackRedirector {
 }
 
 impl SqPackRedirector {
-    pub unsafe fn start(base_dir: &Path) -> detour::Result<()> {
+    pub unsafe fn start(base_dir: &Path) -> Result<(), Box<dyn Error>> {
         let kernel32 = GetModuleHandleW(WideCString::from_str("kernel32.dll").unwrap().as_ptr());
         let create_file_w_address = GetProcAddress(kernel32, "CreateFileW".as_ptr());
 
-        let create_file_w = GenericDetour::<FnCreateFileW>::new(
-            std::mem::transmute(create_file_w_address),
-            Self::hooked_create_file_w,
-        )?;
+        let create_file_w = GenericDetour::<FnCreateFileW>::new(std::mem::transmute(create_file_w_address), Self::hooked_create_file_w)?;
         create_file_w.enable()?;
 
-        let virtual_sqpack = VirtualSqPack::new(base_dir);
+        let virtual_sqpack = VirtualSqPack::new(base_dir)?;
 
         let redirector = Self {
             virtual_sqpack,
