@@ -1,18 +1,31 @@
-use std::path::{Path, PathBuf};
+use std::collections::HashMap;
+use std::path::Path;
 
 use log::debug;
 use sqpack::{Result, SqPackArchiveId, SqPackFileReference, SqPackPackage};
 
+struct VirtualSqPackData {}
+
+impl VirtualSqPackData {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    pub fn write(&mut self, path: &str) -> u32 {
+        0
+    }
+}
+
 pub struct VirtualSqPack {
     package: SqPackPackage,
-    base_dir: PathBuf,
+    data: HashMap<SqPackArchiveId, VirtualSqPackData>,
 }
 
 impl VirtualSqPack {
     pub fn new(base_dir: &Path) -> Result<Self> {
         Ok(Self {
             package: SqPackPackage::new(base_dir)?,
-            base_dir: base_dir.into(),
+            data: HashMap::new(),
         })
     }
 
@@ -21,10 +34,23 @@ impl VirtualSqPack {
 
         let archive_id = SqPackArchiveId::from_file_path(path);
         let archive = self.package.archive(archive_id).await?;
+        let mut archive = archive.write().await;
 
         let reference = SqPackFileReference::new(path);
 
-        archive.write().await.index.write_offset(reference.hash.folder, reference.hash.file, 0)?;
+        #[allow(clippy::map_entry)]
+        if !self.data.contains_key(&archive_id) {
+            let new_dat_count = archive.index.dat_count() + 1;
+            archive.index.write_dat_count(new_dat_count);
+
+            self.data.insert(archive_id, VirtualSqPackData::new());
+        }
+
+        let dat_index = archive.index.dat_count();
+        let dat_offset = self.data.get_mut(&archive_id).unwrap().write(path);
+        let new_offset = (dat_index << 1) | (dat_offset >> 3);
+
+        archive.index.write_offset(reference.hash.folder, reference.hash.file, new_offset)?;
 
         Ok(())
     }
