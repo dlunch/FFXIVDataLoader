@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use async_std::{
+    fs::File,
+    io::{self, ReadExt},
+};
 use log::debug;
 use pathdiff::diff_paths;
 use walkdir::WalkDir;
@@ -8,16 +12,21 @@ use walkdir::WalkDir;
 use sqpack::{Result, SqPackArchiveId, SqPackFileReference, SqPackPackage};
 
 struct VirtualSqPackData {
+    header: Vec<u8>,
     next_offset: u32,
     files: HashMap<u32, PathBuf>,
 }
 
 impl VirtualSqPackData {
-    pub fn new() -> Self {
-        Self {
+    pub async fn new(mut template_file: File) -> io::Result<Self> {
+        let mut header_template = vec![0; 0x800];
+        template_file.read(&mut header_template).await?;
+
+        Ok(Self {
+            header: header_template,
             next_offset: 0,
             files: HashMap::new(),
-        }
+        })
     }
 
     pub fn write(&mut self, path: &Path) -> u32 {
@@ -26,6 +35,7 @@ impl VirtualSqPackData {
 }
 
 pub struct VirtualSqPack {
+    sqpack_path: PathBuf,
     package: SqPackPackage,
     data: HashMap<SqPackArchiveId, VirtualSqPackData>,
 }
@@ -33,6 +43,7 @@ pub struct VirtualSqPack {
 impl VirtualSqPack {
     pub async fn new(sqpack_path: &Path, data_path: &Path) -> Result<Self> {
         let mut result = Self {
+            sqpack_path: sqpack_path.into(),
             package: SqPackPackage::new(sqpack_path)?,
             data: HashMap::new(),
         };
@@ -73,7 +84,18 @@ impl VirtualSqPack {
             let new_dat_count = archive.index.dat_count() + 1;
             archive.index.write_dat_count(new_dat_count);
 
-            self.data.insert(archive_id, VirtualSqPackData::new());
+            let data_file_name = format!("{:02x}{:02x}{:02x}.win32.dat0", archive_id.root, archive_id.ex, archive_id.part);
+            let mut data_file_path = self.sqpack_path.clone();
+            if archive_id.ex == 0 {
+                data_file_path.push("ffxiv");
+            } else {
+                data_file_path.push(format!("ex{}", archive_id.ex));
+            }
+            data_file_path.push(data_file_name);
+
+            debug!("Creating data file, template {:?}", data_file_path);
+            let data_file = File::open(&data_file_path).await.unwrap();
+            self.data.insert(archive_id, VirtualSqPackData::new(data_file).await.unwrap());
         }
 
         let dat_index = archive.index.dat_count();
