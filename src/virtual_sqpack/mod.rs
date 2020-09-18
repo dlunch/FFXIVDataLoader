@@ -30,7 +30,21 @@ impl VirtualSqPackData {
     }
 
     pub fn write(&mut self, path: &Path) -> u32 {
-        0
+        let size_on_data = 1000; // TODO
+
+        let offset = self.next_offset;
+        self.next_offset += size_on_data;
+        self.files.insert(offset, path.into());
+
+        offset
+    }
+
+    pub fn read(&self, offset: u64, size: u64) -> &[u8] {
+        if offset < 0x800 {
+            &self.header[offset as usize..offset as usize + size as usize]
+        } else {
+            panic!()
+        }
     }
 }
 
