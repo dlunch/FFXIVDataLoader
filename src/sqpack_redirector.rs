@@ -2,7 +2,7 @@
 
 use std::{
     path::{Path, PathBuf},
-    stringify,
+    slice, stringify,
 };
 
 use detour::GenericDetour;
@@ -57,6 +57,14 @@ impl SqPackRedirector {
         0
     }
 
+    fn is_virtual_file_handle(&self, handle: u64) -> bool {
+        false
+    }
+
+    fn read_virtual_file(&self, handle: u64, buf: &mut [u8]) -> u32 {
+        buf.len() as u32
+    }
+
     #[allow(clippy::too_many_arguments)]
     extern "stdcall" fn hooked_create_file_w(
         lp_file_name: *const u16,
@@ -91,16 +99,25 @@ impl SqPackRedirector {
     extern "stdcall" fn hooked_read_file(
         h_file: u64,
         lp_buffer: *mut u8,
-        n_number_of_byttes_to_read: u32,
+        n_number_of_bytes_to_read: u32,
         lp_number_of_bytes_read: *mut u32,
         lp_overlapped: u64,
     ) -> u64 {
         let _self = unsafe { SQPACK_REDIRECTOR.as_ref().unwrap() };
 
-        unsafe {
-            _self
-                .read_file
-                .call(h_file, lp_buffer, n_number_of_byttes_to_read, lp_number_of_bytes_read, lp_overlapped)
+        if _self.is_virtual_file_handle(h_file) {
+            unsafe {
+                let buf = slice::from_raw_parts_mut(lp_buffer, n_number_of_bytes_to_read as usize);
+                *lp_number_of_bytes_read = _self.read_virtual_file(h_file, buf);
+
+                1 // TRUE
+            }
+        } else {
+            unsafe {
+                _self
+                    .read_file
+                    .call(h_file, lp_buffer, n_number_of_bytes_to_read, lp_number_of_bytes_read, lp_overlapped)
+            }
         }
     }
 }
