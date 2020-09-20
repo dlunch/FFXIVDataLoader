@@ -24,14 +24,9 @@ fn initialize() {
         .try_init();
     debug!("ffxiv_data_loader init");
 
-    let mut base_dir = env::current_exe().unwrap();
-    base_dir.pop();
-
-    let mut sqpack_path = base_dir.clone();
-    sqpack_path.push("sqpack");
-
-    let mut data_path = base_dir;
-    data_path.push("data");
+    let base_dir = env::current_exe().unwrap();
+    let sqpack_path = base_dir.parent().unwrap().join("sqpack");
+    let data_path = base_dir.parent().unwrap().join("data");
 
     let virtual_sqpack = task::block_on(async { VirtualSqPack::new(&sqpack_path, &data_path).await.unwrap() });
 
