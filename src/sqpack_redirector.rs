@@ -1,6 +1,7 @@
 #![allow(unused_unsafe)] // clippy bug?
 
 use std::{
+    collections::HashMap,
     path::{Path, PathBuf},
     slice, stringify,
 };
@@ -21,8 +22,14 @@ type FnReadFile = extern "stdcall" fn(u64, *mut u8, u32, *mut u32, u64) -> u64;
 
 static mut SQPACK_REDIRECTOR: Option<SqPackRedirector> = None;
 
+pub struct VirtualFile {
+    path: PathBuf,
+    offset: u64,
+}
+
 pub struct SqPackRedirector {
     virtual_sqpack: VirtualSqPack,
+    virtual_file_handles: HashMap<u64, VirtualFile>,
     create_file_w: GenericDetour<FnCreateFileW>,
     read_file: GenericDetour<FnReadFile>,
 }
@@ -45,6 +52,7 @@ impl SqPackRedirector {
 
         let redirector = Self {
             virtual_sqpack,
+            virtual_file_handles: HashMap::new(),
             create_file_w,
             read_file,
         };
@@ -58,11 +66,13 @@ impl SqPackRedirector {
     }
 
     fn is_virtual_file_handle(&self, handle: u64) -> bool {
-        false
+        self.virtual_file_handles.contains_key(&handle)
     }
 
     fn read_virtual_file(&self, handle: u64, buf: &mut [u8]) -> u32 {
-        buf.len() as u32
+        let virtual_file = self.virtual_file_handles.get(&handle).unwrap();
+
+        self.virtual_sqpack.read_hooked_file(&virtual_file.path, virtual_file.offset, buf)
     }
 
     #[allow(clippy::too_many_arguments)]

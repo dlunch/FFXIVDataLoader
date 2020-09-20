@@ -80,8 +80,8 @@ impl VirtualSqPack {
         false
     }
 
-    pub fn read_hooked_file(&self, path: &Path, offset: u64, size: u64) -> Vec<u8> {
-        Vec::new()
+    pub fn read_hooked_file(&self, path: &Path, offset: u64, buf: &mut [u8]) -> u32 {
+        0
     }
 
     async fn add_file(&mut self, file_path: &Path, archive_path: &str) -> Result<()> {
