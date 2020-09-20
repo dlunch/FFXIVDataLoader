@@ -17,8 +17,12 @@ extern "stdcall" {
     fn GetProcAddress(h_module: u64, lp_proc_name: *const u8) -> u64;
 }
 
-type FnCreateFileW = extern "stdcall" fn(*const u16, u32, u32, u64, u32, u32, u64) -> u64;
-type FnReadFile = extern "stdcall" fn(u64, *mut u8, u32, *mut u32, u64) -> u64;
+type HANDLE = u64;
+type BOOL = u32;
+
+type FnCreateFileW = extern "stdcall" fn(*const u16, u32, u32, u64, u32, u32, u64) -> HANDLE;
+type FnReadFile = extern "stdcall" fn(HANDLE, *mut u8, u32, *mut u32, u64) -> BOOL;
+type FnCloseHandle = extern "stdcall" fn(HANDLE) -> BOOL;
 
 static mut SQPACK_REDIRECTOR: Option<SqPackRedirector> = None;
 
@@ -29,9 +33,10 @@ pub struct VirtualFile {
 
 pub struct SqPackRedirector {
     virtual_sqpack: VirtualSqPack,
-    virtual_file_handles: HashMap<u64, VirtualFile>,
+    virtual_file_handles: HashMap<HANDLE, VirtualFile>,
     create_file_w: GenericDetour<FnCreateFileW>,
     read_file: GenericDetour<FnReadFile>,
+    close_handle: GenericDetour<FnCloseHandle>,
 }
 
 macro_rules! add_hook {
@@ -49,30 +54,37 @@ impl SqPackRedirector {
         let kernel32 = GetModuleHandleW(WideCString::from_str("kernel32.dll").unwrap().as_ptr());
         let create_file_w = add_hook!(kernel32, FnCreateFileW, Self::hooked_create_file_w)?;
         let read_file = add_hook!(kernel32, FnReadFile, Self::hooked_read_file)?;
+        let close_handle = add_hook!(kernel32, FnCloseHandle, Self::hooked_close_handle)?;
 
         let redirector = Self {
             virtual_sqpack,
             virtual_file_handles: HashMap::new(),
             create_file_w,
             read_file,
+            close_handle,
         };
         SQPACK_REDIRECTOR.replace(redirector);
 
         Ok(())
     }
 
-    fn create_virtual_file_handle(&self, path: &Path) -> u64 {
-        0
+    fn create_virtual_file_handle(&self, path: &Path) -> HANDLE {
+        // TODO
+        0xFFFF_FFFF_FFFF_FFFF // INVALID_HANDLE_VALUE
     }
 
-    fn is_virtual_file_handle(&self, handle: u64) -> bool {
+    fn is_virtual_file_handle(&self, handle: HANDLE) -> bool {
         self.virtual_file_handles.contains_key(&handle)
     }
 
-    fn read_virtual_file(&self, handle: u64, buf: &mut [u8]) -> u32 {
+    fn read_virtual_file(&self, handle: HANDLE, buf: &mut [u8]) -> u32 {
         let virtual_file = self.virtual_file_handles.get(&handle).unwrap();
 
         self.virtual_sqpack.read_hooked_file(&virtual_file.path, virtual_file.offset, buf)
+    }
+
+    fn close_virtual_file(&mut self, handle: HANDLE) {
+        self.virtual_file_handles.remove(&handle);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -84,7 +96,7 @@ impl SqPackRedirector {
         dw_creation_disposition: u32,
         dw_flags_and_attributes: u32,
         h_template_file: u64,
-    ) -> u64 {
+    ) -> HANDLE {
         let _self = unsafe { SQPACK_REDIRECTOR.as_ref().unwrap() };
         let path = PathBuf::from(unsafe { WideCStr::from_ptr_str(lp_file_name) }.to_os_string());
         debug!("{:?}", path);
@@ -107,12 +119,12 @@ impl SqPackRedirector {
     }
 
     extern "stdcall" fn hooked_read_file(
-        h_file: u64,
+        h_file: HANDLE,
         lp_buffer: *mut u8,
         n_number_of_bytes_to_read: u32,
         lp_number_of_bytes_read: *mut u32,
         lp_overlapped: u64,
-    ) -> u64 {
+    ) -> BOOL {
         let _self = unsafe { SQPACK_REDIRECTOR.as_ref().unwrap() };
 
         if _self.is_virtual_file_handle(h_file) {
@@ -128,6 +140,18 @@ impl SqPackRedirector {
                     .read_file
                     .call(h_file, lp_buffer, n_number_of_bytes_to_read, lp_number_of_bytes_read, lp_overlapped)
             }
+        }
+    }
+
+    extern "stdcall" fn hooked_close_handle(handle: HANDLE) -> BOOL {
+        let _self = unsafe { SQPACK_REDIRECTOR.as_mut().unwrap() };
+
+        if _self.is_virtual_file_handle(handle) {
+            _self.close_virtual_file(handle);
+
+            1 // TRUE
+        } else {
+            unsafe { _self.close_handle.call(handle) }
         }
     }
 }
