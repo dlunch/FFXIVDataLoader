@@ -4,12 +4,9 @@
 mod dinput_wrapper;
 mod sqpack_redirector;
 mod virtual_sqpack;
+mod winapi;
 
 pub use dinput_wrapper::DirectInput8Create;
-
-extern "stdcall" {
-    fn AllocConsole();
-}
 
 use std::env;
 
@@ -17,6 +14,8 @@ use async_std::task;
 use log::debug;
 
 use virtual_sqpack::VirtualSqPack;
+
+use crate::winapi::AllocConsole;
 
 fn initialize() {
     unsafe { AllocConsole() };

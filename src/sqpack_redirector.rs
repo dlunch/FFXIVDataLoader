@@ -11,18 +11,7 @@ use log::debug;
 use widestring::{WideCStr, WideCString};
 
 use crate::virtual_sqpack::VirtualSqPack;
-
-extern "stdcall" {
-    fn GetModuleHandleW(lp_module_name: *const u16) -> u64;
-    fn GetProcAddress(h_module: u64, lp_proc_name: *const u8) -> u64;
-}
-
-type HANDLE = u64;
-type BOOL = u32;
-
-type FnCreateFileW = extern "stdcall" fn(*const u16, u32, u32, u64, u32, u32, u64) -> HANDLE;
-type FnReadFile = extern "stdcall" fn(HANDLE, *mut u8, u32, *mut u32, u64) -> BOOL;
-type FnCloseHandle = extern "stdcall" fn(HANDLE) -> BOOL;
+use crate::winapi::{FnCloseHandle, FnCreateFileW, FnReadFile, GetModuleHandleW, GetProcAddress, BOOL, HANDLE};
 
 static mut SQPACK_REDIRECTOR: Option<SqPackRedirector> = None;
 
