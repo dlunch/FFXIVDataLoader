@@ -2,11 +2,12 @@ pub type HANDLE = u64;
 pub type BOOL = u32;
 
 extern "stdcall" {
+    // kernel32
     pub fn GetModuleHandleW(lp_module_name: *const u16) -> HANDLE;
-    pub fn GetProcAddress(h_module: HANDLE, lp_proc_name: *const u8) -> u64;
-    pub fn AllocConsole() -> BOOL;
     pub fn LoadLibraryW(lp_lib_file_name: *const u16) -> HANDLE;
+    pub fn GetProcAddress(h_module: HANDLE, lp_proc_name: *const u8) -> u64;
     pub fn GetSystemDirectoryW(lp_buffer: *mut u16, u_size: u32) -> u32;
+    pub fn AllocConsole() -> BOOL;
 }
 
 pub type FnCreateFileW = extern "stdcall" fn(*const u16, u32, u32, u64, u32, u32, u64) -> HANDLE;
