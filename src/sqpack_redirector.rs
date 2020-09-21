@@ -29,8 +29,8 @@ pub struct SqPackRedirector {
 }
 
 macro_rules! add_hook {
-    ($kernel32: expr, $target_fn: ty, $detour: expr) => {{
-        let hook_address = GetProcAddress($kernel32, stringify!($target_fn)[2..].as_ptr());
+    ($lib: expr, $target_fn: ty, $detour: expr) => {{
+        let hook_address = GetProcAddress($lib, stringify!($target_fn)[2..].as_ptr());
         let hook = GenericDetour::<$target_fn>::new(std::mem::transmute(hook_address), $detour)?;
         hook.enable()?;
 
@@ -57,7 +57,7 @@ impl SqPackRedirector {
         Ok(())
     }
 
-    fn create_virtual_file_handle(&self, path: &Path) -> HANDLE {
+    fn create_virtual_file_handle(&mut self, path: &Path) -> HANDLE {
         // TODO
         0xFFFF_FFFF_FFFF_FFFF // INVALID_HANDLE_VALUE
     }
@@ -86,7 +86,7 @@ impl SqPackRedirector {
         dw_flags_and_attributes: u32,
         h_template_file: u64,
     ) -> HANDLE {
-        let _self = unsafe { SQPACK_REDIRECTOR.as_ref().unwrap() };
+        let _self = unsafe { SQPACK_REDIRECTOR.as_mut().unwrap() };
         let path = PathBuf::from(unsafe { WideCStr::from_ptr_str(lp_file_name) }.to_os_string());
         debug!("{:?}", path);
 
