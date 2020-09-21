@@ -13,4 +13,5 @@ extern "stdcall" {
 pub type FnCreateFileW = extern "stdcall" fn(*const u16, u32, u32, u64, u32, u32, u64) -> HANDLE;
 pub type FnReadFile = extern "stdcall" fn(HANDLE, *mut u8, u32, *mut u32, u64) -> BOOL;
 pub type FnCloseHandle = extern "stdcall" fn(HANDLE) -> BOOL;
+pub type FnSetFilePointerEx = extern "stdcall" fn(HANDLE, u64, *mut u64, u32) -> BOOL;
 pub type FnDirectInput8Create = extern "stdcall" fn(h_inst: u64, dw_version: u32, riidltf: u64, ppv_out: u64, punk_outer: u64) -> u64;

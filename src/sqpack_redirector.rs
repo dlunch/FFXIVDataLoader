@@ -11,7 +11,7 @@ use log::debug;
 use widestring::{WideCStr, WideCString};
 
 use crate::virtual_sqpack::VirtualSqPack;
-use crate::winapi::{FnCloseHandle, FnCreateFileW, FnReadFile, GetModuleHandleW, GetProcAddress, BOOL, HANDLE};
+use crate::winapi::{FnCloseHandle, FnCreateFileW, FnReadFile, FnSetFilePointerEx, GetModuleHandleW, GetProcAddress, BOOL, HANDLE};
 
 static mut SQPACK_REDIRECTOR: Option<SqPackRedirector> = None;
 
@@ -26,6 +26,7 @@ pub struct SqPackRedirector {
     create_file_w: GenericDetour<FnCreateFileW>,
     read_file: GenericDetour<FnReadFile>,
     close_handle: GenericDetour<FnCloseHandle>,
+    set_file_pointer_ex: GenericDetour<FnSetFilePointerEx>,
     handle_sequence: u32,
 }
 
@@ -47,6 +48,7 @@ impl SqPackRedirector {
         let create_file_w = add_hook!(kernel32, FnCreateFileW, Self::hooked_create_file_w)?;
         let read_file = add_hook!(kernel32, FnReadFile, Self::hooked_read_file)?;
         let close_handle = add_hook!(kernel32, FnCloseHandle, Self::hooked_close_handle)?;
+        let set_file_pointer_ex = add_hook!(kernel32, FnSetFilePointerEx, Self::hooked_set_file_pointer_ex)?;
 
         let redirector = Self {
             virtual_sqpack,
@@ -54,6 +56,7 @@ impl SqPackRedirector {
             create_file_w,
             read_file,
             close_handle,
+            set_file_pointer_ex,
             handle_sequence: 0,
         };
         unsafe { SQPACK_REDIRECTOR.replace(redirector) };
@@ -90,6 +93,10 @@ impl SqPackRedirector {
 
     fn close_virtual_file(&mut self, handle: HANDLE) {
         self.virtual_file_handles.remove(&handle);
+    }
+
+    fn seek_virtual_file(&mut self, handle: HANDLE, new_offset: u64) {
+        self.virtual_file_handles.get_mut(&handle).unwrap().offset = new_offset;
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -157,6 +164,38 @@ impl SqPackRedirector {
             1 // TRUE
         } else {
             unsafe { _self.close_handle.call(handle) }
+        }
+    }
+
+    extern "stdcall" fn hooked_set_file_pointer_ex(
+        h_file: HANDLE,
+        li_distance_to_move: u64,
+        lp_new_file_pointer: *mut u64,
+        dw_move_method: u32,
+    ) -> BOOL {
+        let _self = unsafe { SQPACK_REDIRECTOR.as_mut().unwrap() };
+        if _self.is_virtual_file_handle(h_file) {
+            if dw_move_method == 0 {
+                // FILE_BEGIN
+                _self.seek_virtual_file(h_file, li_distance_to_move);
+                unsafe {
+                    if !lp_new_file_pointer.is_null() {
+                        *lp_new_file_pointer = li_distance_to_move;
+                    }
+                }
+
+                1 // TRUE
+            } else {
+                debug!("Unsupported SetFilePointerEx MoveMethod {}", dw_move_method);
+
+                0
+            }
+        } else {
+            unsafe {
+                _self
+                    .set_file_pointer_ex
+                    .call(h_file, li_distance_to_move, lp_new_file_pointer, dw_move_method)
+            }
         }
     }
 }
