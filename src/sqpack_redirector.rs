@@ -26,6 +26,7 @@ pub struct SqPackRedirector {
     create_file_w: GenericDetour<FnCreateFileW>,
     read_file: GenericDetour<FnReadFile>,
     close_handle: GenericDetour<FnCloseHandle>,
+    handle_sequence: u32,
 }
 
 macro_rules! add_hook {
@@ -53,6 +54,7 @@ impl SqPackRedirector {
             create_file_w,
             read_file,
             close_handle,
+            handle_sequence: 0,
         };
         unsafe { SQPACK_REDIRECTOR.replace(redirector) };
 
@@ -60,8 +62,20 @@ impl SqPackRedirector {
     }
 
     fn create_virtual_file_handle(&mut self, path: &Path) -> HANDLE {
-        // TODO
-        0xFFFF_FFFF_FFFF_FFFF // INVALID_HANDLE_VALUE
+        let sequence = self.handle_sequence;
+        self.handle_sequence += 1;
+
+        let handle = (0xFFFF_0000 + sequence) as HANDLE;
+
+        self.virtual_file_handles.insert(
+            handle,
+            VirtualFile {
+                path: path.into(),
+                offset: 0,
+            },
+        );
+
+        handle
     }
 
     fn is_virtual_file_handle(&self, handle: HANDLE) -> bool {
