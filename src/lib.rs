@@ -30,7 +30,7 @@ fn initialize() {
 
     let virtual_sqpack = task::block_on(async { VirtualSqPack::new(&sqpack_path, &data_path).await.unwrap() });
 
-    unsafe { sqpack_redirector::SqPackRedirector::start(virtual_sqpack).unwrap() };
+    sqpack_redirector::SqPackRedirector::start(virtual_sqpack).unwrap();
 }
 
 #[no_mangle]

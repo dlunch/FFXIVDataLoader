@@ -29,18 +29,20 @@ pub struct SqPackRedirector {
 }
 
 macro_rules! add_hook {
-    ($lib: expr, $target_fn: ty, $detour: expr) => {{
-        let hook_address = GetProcAddress($lib, stringify!($target_fn)[2..].as_ptr());
-        let hook = GenericDetour::<$target_fn>::new(std::mem::transmute(hook_address), $detour)?;
-        hook.enable()?;
+    ($lib: expr, $target_fn: ty, $detour: expr) => {
+        unsafe {
+            let hook_address = GetProcAddress($lib, stringify!($target_fn)[2..].as_ptr());
+            let hook = GenericDetour::<$target_fn>::new(std::mem::transmute(hook_address), $detour)?;
+            hook.enable()?;
 
-        Ok::<_, detour::Error>(hook)
-    }};
+            Ok::<_, detour::Error>(hook)
+        }
+    };
 }
 
 impl SqPackRedirector {
-    pub unsafe fn start(virtual_sqpack: VirtualSqPack) -> detour::Result<()> {
-        let kernel32 = GetModuleHandleW(WideCString::from_str("kernel32.dll").unwrap().as_ptr());
+    pub fn start(virtual_sqpack: VirtualSqPack) -> detour::Result<()> {
+        let kernel32 = unsafe { GetModuleHandleW(WideCString::from_str("kernel32.dll").unwrap().as_ptr()) };
         let create_file_w = add_hook!(kernel32, FnCreateFileW, Self::hooked_create_file_w)?;
         let read_file = add_hook!(kernel32, FnReadFile, Self::hooked_read_file)?;
         let close_handle = add_hook!(kernel32, FnCloseHandle, Self::hooked_close_handle)?;
@@ -52,7 +54,7 @@ impl SqPackRedirector {
             read_file,
             close_handle,
         };
-        SQPACK_REDIRECTOR.replace(redirector);
+        unsafe { SQPACK_REDIRECTOR.replace(redirector) };
 
         Ok(())
     }
