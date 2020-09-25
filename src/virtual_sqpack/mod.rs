@@ -43,9 +43,11 @@ impl VirtualSqPackArchive {
         self.write_index(&SqPackFileReference::new(archive_path), offset)
     }
 
-    pub fn read(&self, offset: u64, size: u64) -> &[u8] {
+    pub fn read(&self, offset: u64, buf: &mut [u8]) -> u32 {
         if offset < 0x800 {
-            &self.dat_header[offset as usize..offset as usize + size as usize]
+            buf.copy_from_slice(&self.dat_header[offset as usize..offset as usize + buf.len()]);
+
+            buf.len() as u32
         } else {
             panic!()
         }
@@ -102,7 +104,12 @@ impl VirtualSqPack {
     }
 
     pub fn read_hooked_file(&self, path: &Path, offset: u64, buf: &mut [u8]) -> u32 {
-        0
+        let file_name = path.file_name().unwrap().to_str().unwrap();
+        let archive_id = SqPackArchiveId::from_sqpack_file_name(file_name);
+
+        let data = self.data.get(&archive_id).unwrap();
+
+        data.read(offset, buf)
     }
 
     async fn add_file(&mut self, file_path: &Path, archive_path: &str) -> Result<()> {
