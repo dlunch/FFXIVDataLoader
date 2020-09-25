@@ -6,10 +6,10 @@ jobs:
   ci:
     if: "!contains(github.event.head_commit.message, 'ci skip')"
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.rust == 'nightly' || matrix.os == 'macos-latest' }}
+    continue-on-error: ${{ matrix.rust == 'nightly' }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        os: windows-latest
         rust: [stable, beta, nightly]
 
     steps:
