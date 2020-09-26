@@ -5,7 +5,7 @@ use std::{
 };
 
 use detour::GenericDetour;
-use log::debug;
+use log::{debug, error};
 use widestring::{WideCStr, WideCString};
 
 use crate::virtual_sqpack::VirtualSqPackPackage;
@@ -74,6 +74,8 @@ impl SqPackRedirector {
             },
         );
 
+        debug!("Created virtual file handle: {}, path: {:?}", handle, path);
+
         handle
     }
 
@@ -109,7 +111,7 @@ impl SqPackRedirector {
         unsafe {
             let _self = SQPACK_REDIRECTOR.as_mut().unwrap();
             let path = PathBuf::from(WideCStr::from_ptr_str(lp_file_name).to_os_string());
-            debug!("{:?}", path);
+            debug!("CreateFile {:?}", path);
 
             if _self.virtual_sqpack.is_hooked_file(&path) {
                 _self.create_virtual_file_handle(&path)
@@ -136,6 +138,7 @@ impl SqPackRedirector {
     ) -> BOOL {
         unsafe {
             let _self = SQPACK_REDIRECTOR.as_ref().unwrap();
+            debug!("ReadFile {}", h_file);
 
             if _self.is_virtual_file_handle(h_file) {
                 let buf = slice::from_raw_parts_mut(lp_buffer, n_number_of_bytes_to_read as usize);
@@ -183,7 +186,7 @@ impl SqPackRedirector {
 
                     1 // TRUE
                 } else {
-                    debug!("Unsupported SetFilePointerEx MoveMethod {}", dw_move_method);
+                    error!("Unsupported SetFilePointerEx MoveMethod {}", dw_move_method);
 
                     0
                 }
