@@ -9,6 +9,7 @@ mod winapi;
 pub use dinput_wrapper::DirectInput8Create;
 
 use std::env;
+use std::io::{stdin, Read};
 
 use async_std::task;
 use log::debug;
@@ -36,12 +37,23 @@ unsafe fn initialize() {
     sqpack_redirector::SqPackRedirector::start(virtual_sqpack).unwrap();
 }
 
+unsafe fn uninitialize() {
+    #[cfg(debug_assertions)]
+    {
+        println!("Press any key to exit...");
+        let _ = stdin().bytes().next();
+    }
+}
+
 #[no_mangle]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "stdcall" fn DllMain(_: u32, reason: u32, _: u64) -> u32 {
-    if reason == 1 {
+    match reason {
         // DLL_PROCESS_ATTACH
-        initialize()
+        1 => initialize(),
+        // DLL_PROCESS_DETACH
+        0 => uninitialize(),
+        _ => {}
     }
 
     1 // TRUE
