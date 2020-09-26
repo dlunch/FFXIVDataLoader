@@ -36,7 +36,7 @@ impl VirtualSqPackArchive {
         let new_dat_count = index.dat_count() + 1;
         index.write_dat_count(new_dat_count);
 
-        let mut dat0_file = File::open(&dat0_file_path).await.unwrap();
+        let mut dat0_file = File::open(&dat0_file_path).await?;
         let mut dat0_header = vec![0; 0x800];
         dat0_file.read(&mut dat0_header).await?;
 
