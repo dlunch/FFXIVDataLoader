@@ -17,10 +17,10 @@ use virtual_sqpack::VirtualSqPackPackage;
 
 use crate::winapi::AllocConsole;
 
-fn initialize() {
+unsafe fn initialize() {
     #[cfg(debug_assertions)]
     {
-        unsafe { AllocConsole() };
+        AllocConsole();
         let _ = pretty_env_logger::formatted_timed_builder()
             .filter_level(log::LevelFilter::Debug)
             .try_init();
@@ -37,7 +37,8 @@ fn initialize() {
 }
 
 #[no_mangle]
-pub extern "stdcall" fn DllMain(_: u32, reason: u32, _: u64) -> u32 {
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "stdcall" fn DllMain(_: u32, reason: u32, _: u64) -> u32 {
     if reason == 1 {
         // DLL_PROCESS_ATTACH
         initialize()
