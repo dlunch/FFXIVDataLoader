@@ -38,7 +38,7 @@ impl VirtualSqPackArchive {
 
         let mut dat0_file = File::open(&dat0_file_path).await?;
         let mut dat0_header = vec![0; 0x800];
-        dat0_file.read(&mut dat0_header).await?;
+        dat0_file.read_exact(&mut dat0_header).await?;
 
         let dat = VirtualSqPackData::new(dat0_header);
 
@@ -49,10 +49,12 @@ impl VirtualSqPackArchive {
         })
     }
 
-    pub fn add_file(&mut self, file_path: &Path, archive_path: &str) -> Result<()> {
-        let offset = self.dat.write(file_path);
+    pub fn add_file(&mut self, file_path: &Path, archive_path: &str) -> io::Result<()> {
+        let offset = self.dat.write(file_path)?;
 
-        self.write_index(&SqPackFileReference::new(archive_path), offset)
+        self.write_index(&SqPackFileReference::new(archive_path), offset).unwrap();
+
+        Ok(())
     }
 
     pub fn read(&self, path: &Path, offset: u64, buf: &mut [u8]) -> u32 {
