@@ -150,6 +150,7 @@ impl VirtualSqPack {
 }
 
 #[cfg(test)]
+#[cfg(feature = "test_local")]
 mod test {
     use super::*;
 
