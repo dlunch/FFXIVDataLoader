@@ -19,20 +19,18 @@ pub struct VirtualSqPackArchive {
 
 impl VirtualSqPackArchive {
     pub async fn new(sqpack_base_path: &Path, archive_id: &SqPackArchiveId) -> io::Result<Self> {
-        debug!(
-            "Creating virtual archive {:02x}{:02x}{:02x}",
-            archive_id.root, archive_id.ex, archive_id.part
-        );
+        let archive_name = format!("{:02x}{:02x}{:02x}", archive_id.root, archive_id.ex, archive_id.part);
+        debug!("Creating virtual archive {}", archive_name);
 
         let ex_path = if archive_id.ex == 0 {
             "ffxiv".into()
         } else {
             format!("ex{}", archive_id.ex)
         };
-        let dat0_file_name = format!("{:02x}{:02x}{:02x}.win32.dat0", archive_id.root, archive_id.ex, archive_id.part);
+        let dat0_file_name = format!("{}.win32.dat0", archive_name);
         let dat0_file_path = sqpack_base_path.join(&ex_path).join(dat0_file_name);
 
-        let index_file_name = format!("{:02x}{:02x}{:02x}.win32.index", archive_id.root, archive_id.ex, archive_id.part);
+        let index_file_name = format!("{}.win32.index", archive_name);
         let index_file_path = sqpack_base_path.join(&ex_path).join(index_file_name);
 
         let mut index = SqPackIndex::new(&index_file_path).await?;
