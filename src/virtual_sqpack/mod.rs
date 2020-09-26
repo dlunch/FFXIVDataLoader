@@ -1,7 +1,7 @@
 mod archive;
 mod data;
 
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap};
 use std::path::{Path, PathBuf};
 
 use log::debug;
@@ -64,13 +64,11 @@ impl VirtualSqPackPackage {
         debug!("Adding {:?} as {:?}", file_path, archive_path);
 
         let archive_id = SqPackArchiveId::from_file_path(archive_path);
-        #[allow(clippy::map_entry)]
-        if !self.archives.contains_key(&archive_id) {
-            self.archives
-                .insert(archive_id, VirtualSqPackArchive::new(&self.sqpack_base_path, &archive_id).await.unwrap());
-        }
+        let virtual_archive = match self.archives.entry(archive_id) {
+            Entry::Occupied(x) => x.into_mut(),
+            Entry::Vacant(x) => x.insert(VirtualSqPackArchive::new(&self.sqpack_base_path, &archive_id).await?),
+        };
 
-        let virtual_archive = self.archives.get_mut(&archive_id).unwrap();
         virtual_archive.add_file(file_path, archive_path)?;
 
         Ok(())
