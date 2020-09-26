@@ -18,10 +18,13 @@ use virtual_sqpack::VirtualSqPackPackage;
 use crate::winapi::AllocConsole;
 
 fn initialize() {
-    unsafe { AllocConsole() };
-    let _ = pretty_env_logger::formatted_timed_builder()
-        .filter_level(log::LevelFilter::Debug)
-        .try_init();
+    #[cfg(debug_assertions)]
+    {
+        unsafe { AllocConsole() };
+        let _ = pretty_env_logger::formatted_timed_builder()
+            .filter_level(log::LevelFilter::Debug)
+            .try_init();
+    }
     debug!("ffxiv_data_loader init");
 
     let base_dir = env::current_exe().unwrap();
