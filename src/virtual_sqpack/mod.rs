@@ -45,7 +45,10 @@ impl VirtualSqPackPackage {
             let file_name = path.file_name().unwrap().to_str().unwrap();
             let archive_id = SqPackArchiveId::from_sqpack_file_name(file_name);
 
-            return self.archives.contains_key(&archive_id);
+            let item = self.archives.get(&archive_id);
+            if let Some(x) = item {
+                return x.is_virtual_file(path);
+            }
         }
 
         false

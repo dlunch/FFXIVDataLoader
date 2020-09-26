@@ -49,6 +49,12 @@ impl VirtualSqPackArchive {
         })
     }
 
+    pub fn is_virtual_file(&self, path: &Path) -> bool {
+        let extension = path.extension().unwrap().to_str().unwrap();
+
+        extension == "index" || extension.chars().last().unwrap().to_digit(10).unwrap() == self.dat_index
+    }
+
     pub fn add_file(&mut self, file_path: &Path, archive_path: &str) -> io::Result<()> {
         let offset = self.dat.write(file_path)?;
 
