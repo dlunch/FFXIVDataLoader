@@ -609,7 +609,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "sqpack"
 version = "0.1.0"
-source = "git+https://github.com/dlunch/sqpack#aa4a96c479d9fcb20c62028e480a7434de3ffe8f"
+source = "git+https://github.com/dlunch/sqpack#b66834217b59e23f1e4d0bec1ed3c96ab0d6369e"
 dependencies = [
  "async-std 1.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "async-trait 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use async_std::{
     fs::File,
@@ -9,12 +8,12 @@ use log::debug;
 
 use sqpack::{internal::SqPackIndex, Result, SqPackArchiveId, SqPackFileReference};
 
+use super::data::VirtualSqPackData;
+
 pub struct VirtualSqPackArchive {
     index: SqPackIndex,
-    dat_header: Vec<u8>,
+    dat: VirtualSqPackData,
     dat_index: u32,
-    next_dat_offset: u32,
-    files: HashMap<u32, PathBuf>,
 }
 
 impl VirtualSqPackArchive {
@@ -41,32 +40,31 @@ impl VirtualSqPackArchive {
         let mut dat0_header = vec![0; 0x800];
         dat0_file.read(&mut dat0_header).await?;
 
+        let dat = VirtualSqPackData::new(dat0_header);
+
         Ok(Self {
             index,
-            dat_header: dat0_header,
+            dat,
             dat_index: new_dat_count,
-            next_dat_offset: 0,
-            files: HashMap::new(),
         })
     }
 
     pub fn add_file(&mut self, file_path: &Path, archive_path: &str) -> Result<()> {
-        let size_on_data = 1000; // TODO
-
-        let offset = self.next_dat_offset;
-        self.next_dat_offset += size_on_data;
-        self.files.insert(offset, file_path.into());
+        let offset = self.dat.write(file_path);
 
         self.write_index(&SqPackFileReference::new(archive_path), offset)
     }
 
-    pub fn read(&self, offset: u64, buf: &mut [u8]) -> u32 {
-        if offset < 0x800 {
-            buf.copy_from_slice(&self.dat_header[offset as usize..offset as usize + buf.len()]);
+    pub fn read(&self, path: &Path, offset: u64, buf: &mut [u8]) -> u32 {
+        if path.extension().unwrap().to_str().unwrap() == "index" {
+            let data = self.index.data();
+
+            let offset = offset as usize;
+            buf.copy_from_slice(&data[offset..offset + buf.len()]);
 
             buf.len() as u32
         } else {
-            panic!()
+            self.dat.read(offset, buf)
         }
     }
 

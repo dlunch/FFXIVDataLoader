@@ -1,4 +1,5 @@
 mod archive;
+mod data;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -13,14 +14,14 @@ use archive::VirtualSqPackArchive;
 
 pub struct VirtualSqPackPackage {
     sqpack_base_path: PathBuf,
-    data: HashMap<SqPackArchiveId, VirtualSqPackArchive>,
+    archives: HashMap<SqPackArchiveId, VirtualSqPackArchive>,
 }
 
 impl VirtualSqPackPackage {
     pub async fn new(sqpack_base_path: &Path, data_path: &Path) -> Result<Self> {
         let mut result = Self {
             sqpack_base_path: sqpack_base_path.into(),
-            data: HashMap::new(),
+            archives: HashMap::new(),
         };
 
         for entry in WalkDir::new(data_path).into_iter().filter_map(std::result::Result::ok) {
@@ -44,7 +45,7 @@ impl VirtualSqPackPackage {
             let file_name = path.file_name().unwrap().to_str().unwrap();
             let archive_id = SqPackArchiveId::from_sqpack_file_name(file_name);
 
-            return self.data.contains_key(&archive_id);
+            return self.archives.contains_key(&archive_id);
         }
 
         false
@@ -54,9 +55,9 @@ impl VirtualSqPackPackage {
         let file_name = path.file_name().unwrap().to_str().unwrap();
         let archive_id = SqPackArchiveId::from_sqpack_file_name(file_name);
 
-        let data = self.data.get(&archive_id).unwrap();
+        let archive = self.archives.get(&archive_id).unwrap();
 
-        data.read(offset, buf)
+        archive.read(path, offset, buf)
     }
 
     async fn add_file(&mut self, file_path: &Path, archive_path: &str) -> Result<()> {
@@ -64,12 +65,12 @@ impl VirtualSqPackPackage {
 
         let archive_id = SqPackArchiveId::from_file_path(archive_path);
         #[allow(clippy::map_entry)]
-        if !self.data.contains_key(&archive_id) {
-            self.data
+        if !self.archives.contains_key(&archive_id) {
+            self.archives
                 .insert(archive_id, VirtualSqPackArchive::new(&self.sqpack_base_path, &archive_id).await.unwrap());
         }
 
-        let virtual_archive = self.data.get_mut(&archive_id).unwrap();
+        let virtual_archive = self.archives.get_mut(&archive_id).unwrap();
         virtual_archive.add_file(file_path, archive_path)?;
 
         Ok(())
