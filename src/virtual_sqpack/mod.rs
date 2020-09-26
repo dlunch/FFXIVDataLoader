@@ -38,7 +38,7 @@ impl VirtualSqPackPackage {
         Ok(result)
     }
 
-    pub fn is_hooked_file(&self, path: &Path) -> bool {
+    pub fn is_virtual_file(&self, path: &Path) -> bool {
         let relative_path = diff_paths(path, &self.sqpack_base_path);
 
         if relative_path.is_some() {
@@ -51,7 +51,7 @@ impl VirtualSqPackPackage {
         false
     }
 
-    pub fn read_hooked_file(&self, path: &Path, offset: u64, buf: &mut [u8]) -> u32 {
+    pub fn read_virtual_file(&self, path: &Path, offset: u64, buf: &mut [u8]) -> u32 {
         let file_name = path.file_name().unwrap().to_str().unwrap();
         let archive_id = SqPackArchiveId::from_sqpack_file_name(file_name);
 

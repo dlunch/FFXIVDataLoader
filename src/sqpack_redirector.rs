@@ -86,7 +86,7 @@ impl SqPackRedirector {
     fn read_virtual_file(&self, handle: HANDLE, buf: &mut [u8]) -> u32 {
         let virtual_file = self.virtual_file_handles.get(&handle).unwrap();
 
-        self.virtual_sqpack.read_hooked_file(&virtual_file.path, virtual_file.offset, buf)
+        self.virtual_sqpack.read_virtual_file(&virtual_file.path, virtual_file.offset, buf)
     }
 
     fn close_virtual_file(&mut self, handle: HANDLE) {
@@ -113,7 +113,7 @@ impl SqPackRedirector {
             let path = PathBuf::from(WideCStr::from_ptr_str(lp_file_name).to_os_string());
             debug!("CreateFile {:?}", path);
 
-            if _self.virtual_sqpack.is_hooked_file(&path) {
+            if _self.virtual_sqpack.is_virtual_file(&path) {
                 _self.create_virtual_file_handle(&path)
             } else {
                 _self.create_file_w.call(
