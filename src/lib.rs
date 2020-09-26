@@ -13,7 +13,7 @@ use std::env;
 use async_std::task;
 use log::debug;
 
-use virtual_sqpack::VirtualSqPack;
+use virtual_sqpack::VirtualSqPackPackage;
 
 use crate::winapi::AllocConsole;
 
@@ -28,7 +28,7 @@ fn initialize() {
     let sqpack_path = base_dir.parent().unwrap().join("sqpack");
     let data_path = base_dir.parent().unwrap().join("data");
 
-    let virtual_sqpack = task::block_on(async { VirtualSqPack::new(&sqpack_path, &data_path).await.unwrap() });
+    let virtual_sqpack = task::block_on(async { VirtualSqPackPackage::new(&sqpack_path, &data_path).await.unwrap() });
 
     sqpack_redirector::SqPackRedirector::start(virtual_sqpack).unwrap();
 }

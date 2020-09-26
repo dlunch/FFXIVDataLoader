@@ -11,12 +11,12 @@ use sqpack::{Result, SqPackArchiveId};
 
 use archive::VirtualSqPackArchive;
 
-pub struct VirtualSqPack {
+pub struct VirtualSqPackPackage {
     sqpack_base_path: PathBuf,
     data: HashMap<SqPackArchiveId, VirtualSqPackArchive>,
 }
 
-impl VirtualSqPack {
+impl VirtualSqPackPackage {
     pub async fn new(sqpack_base_path: &Path, data_path: &Path) -> Result<Self> {
         let mut result = Self {
             sqpack_base_path: sqpack_base_path.into(),
@@ -89,7 +89,7 @@ mod test {
 
         let sqpack_path = Path::new("D:\\games\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack");
         let data_path = Path::new("D:\\games\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\data");
-        let _ = VirtualSqPack::new(sqpack_path, data_path).await?;
+        let _ = VirtualSqPackPackage::new(sqpack_path, data_path).await?;
 
         Ok(())
     }

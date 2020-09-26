@@ -10,7 +10,7 @@ use detour::GenericDetour;
 use log::debug;
 use widestring::{WideCStr, WideCString};
 
-use crate::virtual_sqpack::VirtualSqPack;
+use crate::virtual_sqpack::VirtualSqPackPackage;
 use crate::winapi::{FnCloseHandle, FnCreateFileW, FnReadFile, FnSetFilePointerEx, GetModuleHandleW, GetProcAddress, BOOL, HANDLE};
 
 static mut SQPACK_REDIRECTOR: Option<SqPackRedirector> = None;
@@ -21,7 +21,7 @@ pub struct VirtualFile {
 }
 
 pub struct SqPackRedirector {
-    virtual_sqpack: VirtualSqPack,
+    virtual_sqpack: VirtualSqPackPackage,
     virtual_file_handles: HashMap<HANDLE, VirtualFile>,
     create_file_w: GenericDetour<FnCreateFileW>,
     read_file: GenericDetour<FnReadFile>,
@@ -43,7 +43,7 @@ macro_rules! add_hook {
 }
 
 impl SqPackRedirector {
-    pub fn start(virtual_sqpack: VirtualSqPack) -> detour::Result<()> {
+    pub fn start(virtual_sqpack: VirtualSqPackPackage) -> detour::Result<()> {
         let kernel32 = unsafe { GetModuleHandleW(WideCString::from_str("kernel32.dll").unwrap().as_ptr()) };
         let create_file_w = add_hook!(kernel32, FnCreateFileW, Self::hooked_create_file_w)?;
         let read_file = add_hook!(kernel32, FnReadFile, Self::hooked_read_file)?;
