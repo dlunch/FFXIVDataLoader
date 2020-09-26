@@ -12,6 +12,13 @@ use sqpack::{Result, SqPackArchiveId};
 
 use archive::VirtualSqPackArchive;
 
+pub enum VirtualArchiveFileType {
+    Index,
+    Dat,
+}
+
+pub type VirtualArchiveFileHandle = (SqPackArchiveId, VirtualArchiveFileType);
+
 pub struct VirtualSqPackPackage {
     sqpack_base_path: PathBuf,
     archives: HashMap<SqPackArchiveId, VirtualSqPackArchive>,
@@ -31,14 +38,14 @@ impl VirtualSqPackPackage {
 
                 let archive_path = relative.as_os_str().to_str().unwrap().replace("\\", "/");
 
-                result.add_file(path, &archive_path).await?
+                result.add_virtual_file(path, &archive_path).await?
             }
         }
 
         Ok(result)
     }
 
-    pub fn is_virtual_file(&self, path: &Path) -> bool {
+    pub fn open_virtual_archive_file(&self, path: &Path) -> Option<VirtualArchiveFileHandle> {
         let relative_path = diff_paths(path, &self.sqpack_base_path);
 
         if relative_path.is_some() {
@@ -47,32 +54,29 @@ impl VirtualSqPackPackage {
 
             let item = self.archives.get(&archive_id);
             if let Some(x) = item {
-                return x.is_virtual_file(path);
+                return x.open(path);
             }
         }
 
-        false
+        None
     }
 
-    pub fn read_virtual_file(&self, path: &Path, offset: u64, buf: &mut [u8]) -> u32 {
-        let file_name = path.file_name().unwrap().to_str().unwrap();
-        let archive_id = SqPackArchiveId::from_sqpack_file_name(file_name);
+    pub fn read_virtual_archive_file(&self, handle: &VirtualArchiveFileHandle, offset: u64, buf: &mut [u8]) -> u32 {
+        let archive = self.archives.get(&handle.0).unwrap();
 
-        let archive = self.archives.get(&archive_id).unwrap();
-
-        archive.read(path, offset, buf)
+        archive.read(&handle.1, offset, buf)
     }
 
-    async fn add_file(&mut self, file_path: &Path, archive_path: &str) -> Result<()> {
+    async fn add_virtual_file(&mut self, file_path: &Path, archive_path: &str) -> Result<()> {
         debug!("Adding {:?} as {:?}", file_path, archive_path);
 
         let archive_id = SqPackArchiveId::from_file_path(archive_path);
         let virtual_archive = match self.archives.entry(archive_id) {
             Entry::Occupied(x) => x.into_mut(),
-            Entry::Vacant(x) => x.insert(VirtualSqPackArchive::new(&self.sqpack_base_path, &archive_id).await?),
+            Entry::Vacant(x) => x.insert(VirtualSqPackArchive::new(&self.sqpack_base_path, archive_id).await?),
         };
 
-        virtual_archive.add_file(file_path, archive_path)?;
+        virtual_archive.add(file_path, archive_path)?;
 
         Ok(())
     }

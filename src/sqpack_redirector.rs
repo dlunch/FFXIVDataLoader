@@ -8,13 +8,13 @@ use detour::GenericDetour;
 use log::{debug, error};
 use widestring::{WideCStr, WideCString};
 
-use crate::virtual_sqpack::VirtualSqPackPackage;
+use crate::virtual_sqpack::{VirtualArchiveFileHandle, VirtualSqPackPackage};
 use crate::winapi::{FnCloseHandle, FnCreateFileW, FnReadFile, FnSetFilePointerEx, GetModuleHandleW, GetProcAddress, BOOL, HANDLE};
 
 static mut SQPACK_REDIRECTOR: Option<SqPackRedirector> = None;
 
 pub struct VirtualFile {
-    path: PathBuf,
+    handle: VirtualArchiveFileHandle,
     offset: u64,
 }
 
@@ -60,23 +60,21 @@ impl SqPackRedirector {
         Ok(())
     }
 
-    fn create_virtual_file_handle(&mut self, path: &Path) -> HANDLE {
-        let sequence = self.handle_sequence;
-        self.handle_sequence += 1;
+    fn open_virtual_file(&mut self, path: &Path) -> Option<HANDLE> {
+        if let Some(x) = self.virtual_sqpack.open_virtual_archive_file(path) {
+            let sequence = self.handle_sequence;
+            self.handle_sequence += 1;
 
-        let handle = (0xFFFF_0000 + sequence) as HANDLE;
+            let handle = (0xFFFF_0000 + sequence) as HANDLE;
 
-        self.virtual_file_handles.insert(
-            handle,
-            VirtualFile {
-                path: path.into(),
-                offset: 0,
-            },
-        );
+            self.virtual_file_handles.insert(handle, VirtualFile { handle: x, offset: 0 });
 
-        debug!("Created virtual file handle: {}, path: {:?}", handle, path);
+            debug!("Created virtual file handle: {}, path: {:?}", handle, path);
 
-        handle
+            Some(handle)
+        } else {
+            None
+        }
     }
 
     fn is_virtual_file_handle(&self, handle: HANDLE) -> bool {
@@ -86,7 +84,8 @@ impl SqPackRedirector {
     fn read_virtual_file(&self, handle: HANDLE, buf: &mut [u8]) -> u32 {
         let virtual_file = self.virtual_file_handles.get(&handle).unwrap();
 
-        self.virtual_sqpack.read_virtual_file(&virtual_file.path, virtual_file.offset, buf)
+        self.virtual_sqpack
+            .read_virtual_archive_file(&virtual_file.handle, virtual_file.offset, buf)
     }
 
     fn close_virtual_file(&mut self, handle: HANDLE) {
@@ -113,8 +112,8 @@ impl SqPackRedirector {
             let path = PathBuf::from(WideCStr::from_ptr_str(lp_file_name).to_os_string());
             debug!("CreateFile {:?}", path);
 
-            if _self.virtual_sqpack.is_virtual_file(&path) {
-                _self.create_virtual_file_handle(&path)
+            if let Some(x) = _self.open_virtual_file(&path) {
+                x
             } else {
                 _self.create_file_w.call(
                     lp_file_name,

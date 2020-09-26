@@ -8,16 +8,17 @@ use log::debug;
 
 use sqpack::{internal::SqPackIndex, Result, SqPackArchiveId, SqPackFileReference};
 
-use super::data::VirtualSqPackData;
+use super::{data::VirtualSqPackData, VirtualArchiveFileHandle, VirtualArchiveFileType};
 
 pub struct VirtualSqPackArchive {
+    archive_id: SqPackArchiveId,
     index: SqPackIndex,
     dat: VirtualSqPackData,
     dat_index: u32,
 }
 
 impl VirtualSqPackArchive {
-    pub async fn new(sqpack_base_path: &Path, archive_id: &SqPackArchiveId) -> io::Result<Self> {
+    pub async fn new(sqpack_base_path: &Path, archive_id: SqPackArchiveId) -> io::Result<Self> {
         let archive_name = format!("{:02x}{:02x}{:02x}", archive_id.root, archive_id.ex, archive_id.part);
         debug!("Creating virtual archive {}", archive_name);
 
@@ -43,19 +44,26 @@ impl VirtualSqPackArchive {
         let dat = VirtualSqPackData::new(dat0_header);
 
         Ok(Self {
+            archive_id,
             index,
             dat,
             dat_index: new_dat_count,
         })
     }
 
-    pub fn is_virtual_file(&self, path: &Path) -> bool {
+    pub fn open(&self, path: &Path) -> Option<VirtualArchiveFileHandle> {
         let extension = path.extension().unwrap().to_str().unwrap();
 
-        extension == "index" || extension.chars().last().unwrap().to_digit(10).unwrap() == self.dat_index
+        if extension == "index" {
+            Some((self.archive_id, VirtualArchiveFileType::Index))
+        } else if extension.chars().last().unwrap().to_digit(10).unwrap() == self.dat_index {
+            Some((self.archive_id, VirtualArchiveFileType::Dat))
+        } else {
+            None
+        }
     }
 
-    pub fn add_file(&mut self, file_path: &Path, archive_path: &str) -> io::Result<()> {
+    pub fn add(&mut self, file_path: &Path, archive_path: &str) -> io::Result<()> {
         let offset = self.dat.write(file_path)?;
 
         self.write_index(&SqPackFileReference::new(archive_path), offset).unwrap();
@@ -63,16 +71,17 @@ impl VirtualSqPackArchive {
         Ok(())
     }
 
-    pub fn read(&self, path: &Path, offset: u64, buf: &mut [u8]) -> u32 {
-        if path.extension().unwrap().to_str().unwrap() == "index" {
-            let data = self.index.data();
+    pub fn read(&self, file_type: &VirtualArchiveFileType, offset: u64, buf: &mut [u8]) -> u32 {
+        match file_type {
+            VirtualArchiveFileType::Index => {
+                let data = self.index.data();
 
-            let offset = offset as usize;
-            buf.copy_from_slice(&data[offset..offset + buf.len()]);
+                let offset = offset as usize;
+                buf.copy_from_slice(&data[offset..offset + buf.len()]);
 
-            buf.len() as u32
-        } else {
-            self.dat.read(offset, buf)
+                buf.len() as u32
+            }
+            VirtualArchiveFileType::Dat => self.dat.read(offset, buf),
         }
     }
 
