@@ -31,8 +31,9 @@ impl VirtualSqPackData {
     }
 
     pub fn read(&self, offset: u64, buf: &mut [u8]) -> u32 {
-        if offset < 0x800 {
-            buf.copy_from_slice(&self.header[offset as usize..offset as usize + buf.len()]);
+        let offset = offset as usize;
+        if offset < self.header.len() {
+            buf.copy_from_slice(&self.header[offset..offset + buf.len()]);
 
             buf.len() as u32
         } else {
