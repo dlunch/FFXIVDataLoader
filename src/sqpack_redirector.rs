@@ -137,7 +137,7 @@ impl SqPackRedirector {
     ) -> BOOL {
         unsafe {
             let _self = SQPACK_REDIRECTOR.as_ref().unwrap();
-            debug!("ReadFile {}", h_file);
+            debug!("ReadFile {} {}", h_file, n_number_of_bytes_to_read);
 
             if _self.is_virtual_file_handle(h_file) {
                 let buf = slice::from_raw_parts_mut(lp_buffer, n_number_of_bytes_to_read as usize);
@@ -174,6 +174,8 @@ impl SqPackRedirector {
     ) -> BOOL {
         unsafe {
             let _self = SQPACK_REDIRECTOR.as_mut().unwrap();
+            debug!("SetFilePointerEx {} {}, {}", h_file, li_distance_to_move, dw_move_method);
+
             if _self.is_virtual_file_handle(h_file) {
                 if dw_move_method == 0 {
                     // FILE_BEGIN
