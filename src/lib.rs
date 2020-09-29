@@ -11,7 +11,6 @@ pub use dinput_wrapper::DirectInput8Create;
 use std::env;
 use std::io::{stdin, Read};
 
-use async_std::task;
 use log::debug;
 
 use virtual_sqpack::VirtualSqPackPackage;
@@ -32,7 +31,7 @@ unsafe fn initialize() {
     let sqpack_path = base_dir.parent().unwrap().join("sqpack");
     let data_path = base_dir.parent().unwrap().join("data");
 
-    let virtual_sqpack = task::block_on(async { VirtualSqPackPackage::new(&sqpack_path, &data_path).await.unwrap() });
+    let virtual_sqpack = VirtualSqPackPackage::new(&sqpack_path, &data_path).unwrap();
 
     sqpack_redirector::SqPackRedirector::start(virtual_sqpack).unwrap();
 }

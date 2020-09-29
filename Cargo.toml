@@ -17,6 +17,5 @@ log = { version = "^0.4" }
 pretty_env_logger = { version = "^0.4" }
 walkdir = { version = "^2.3" }
 pathdiff = { version = "0.2.0" }
-async-std = { version = "^1.6", features = ["attributes", "alloc"], default-features = false }
 
 sqpack = { version = "^0.1", git = "https://github.com/dlunch/sqpack" }

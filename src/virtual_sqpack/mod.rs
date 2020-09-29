@@ -25,7 +25,7 @@ pub struct VirtualSqPackPackage {
 }
 
 impl VirtualSqPackPackage {
-    pub async fn new(sqpack_base_path: &Path, data_path: &Path) -> Result<Self> {
+    pub fn new(sqpack_base_path: &Path, data_path: &Path) -> Result<Self> {
         let mut result = Self {
             sqpack_base_path: sqpack_base_path.into(),
             archives: HashMap::new(),
@@ -38,7 +38,7 @@ impl VirtualSqPackPackage {
 
                 let archive_path = relative.as_os_str().to_str().unwrap().replace("\\", "/");
 
-                result.add_virtual_file(path, &archive_path).await?
+                result.add_virtual_file(path, &archive_path)?
             }
         }
 
@@ -67,13 +67,13 @@ impl VirtualSqPackPackage {
         archive.read(&handle.1, offset, buf)
     }
 
-    async fn add_virtual_file(&mut self, file_path: &Path, archive_path: &str) -> Result<()> {
+    fn add_virtual_file(&mut self, file_path: &Path, archive_path: &str) -> Result<()> {
         debug!("Adding {:?} as {:?}", file_path, archive_path);
 
         let archive_id = SqPackArchiveId::from_file_path(archive_path);
         let virtual_archive = match self.archives.entry(archive_id) {
             Entry::Occupied(x) => x.into_mut(),
-            Entry::Vacant(x) => x.insert(VirtualSqPackArchive::new(&self.sqpack_base_path, archive_id).await?),
+            Entry::Vacant(x) => x.insert(VirtualSqPackArchive::new(&self.sqpack_base_path, archive_id)?),
         };
 
         virtual_archive.add(file_path, archive_path)?;
@@ -87,15 +87,15 @@ impl VirtualSqPackPackage {
 mod test {
     use super::*;
 
-    #[async_std::test]
-    async fn test_virtual_sqpack() -> Result<()> {
+    #[test]
+    fn test_virtual_sqpack() -> Result<()> {
         let _ = pretty_env_logger::formatted_timed_builder()
             .filter_level(log::LevelFilter::Debug)
             .try_init();
 
         let sqpack_path = Path::new("D:\\games\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\sqpack");
         let data_path = Path::new("D:\\games\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\\game\\data");
-        let _ = VirtualSqPackPackage::new(sqpack_path, data_path).await?;
+        let _ = VirtualSqPackPackage::new(sqpack_path, data_path)?;
 
         Ok(())
     }

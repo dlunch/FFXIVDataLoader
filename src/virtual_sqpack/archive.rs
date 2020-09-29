@@ -1,9 +1,9 @@
-use std::path::Path;
-
-use async_std::{
-    fs::File,
-    io::{self, ReadExt},
+use std::{
+    fs::{self, File},
+    io::{self, Read},
+    path::Path,
 };
+
 use log::debug;
 
 use sqpack::{internal::SqPackIndex, Result, SqPackArchiveId, SqPackFileReference};
@@ -18,7 +18,7 @@ pub struct VirtualSqPackArchive {
 }
 
 impl VirtualSqPackArchive {
-    pub async fn new(sqpack_base_path: &Path, archive_id: SqPackArchiveId) -> io::Result<Self> {
+    pub fn new(sqpack_base_path: &Path, archive_id: SqPackArchiveId) -> io::Result<Self> {
         let archive_name = format!("{:02x}{:02x}{:02x}", archive_id.root, archive_id.ex, archive_id.part);
         debug!("Creating virtual archive {}", archive_name);
 
@@ -33,13 +33,14 @@ impl VirtualSqPackArchive {
         let index_file_name = format!("{}.win32.index", archive_name);
         let index_file_path = sqpack_base_path.join(&ex_path).join(index_file_name);
 
-        let mut index = SqPackIndex::new(&index_file_path).await?;
+        let index_data = fs::read(&index_file_path)?;
+        let mut index = SqPackIndex::from_raw(index_data);
         let new_dat_count = index.dat_count() + 1;
         index.write_dat_count(new_dat_count);
 
-        let mut dat0_file = File::open(&dat0_file_path).await?;
+        let mut dat0_file = File::open(&dat0_file_path)?;
         let mut dat0_header = vec![0; 0x800];
-        dat0_file.read_exact(&mut dat0_header).await?;
+        dat0_file.read_exact(&mut dat0_header)?;
 
         let dat = VirtualSqPackData::new(dat0_header);
 
