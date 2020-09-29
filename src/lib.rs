@@ -40,7 +40,7 @@ unsafe fn initialize() {
 unsafe fn uninitialize() {
     #[cfg(debug_assertions)]
     {
-        println!("Press any key to exit...");
+        println!("Press enter to exit...");
         let _ = stdin().bytes().next();
     }
 }
