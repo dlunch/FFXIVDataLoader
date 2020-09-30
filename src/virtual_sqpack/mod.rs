@@ -26,6 +26,8 @@ pub struct VirtualSqPackPackage {
 
 impl VirtualSqPackPackage {
     pub fn new(sqpack_base_path: &Path, data_path: &Path) -> Result<Self> {
+        debug!("{:?} {:?}", sqpack_base_path, data_path);
+
         let mut result = Self {
             sqpack_base_path: sqpack_base_path.into(),
             archives: HashMap::new(),
@@ -48,13 +50,15 @@ impl VirtualSqPackPackage {
     pub fn open_virtual_archive_file(&self, path: &Path) -> Option<VirtualArchiveFileHandle> {
         let relative_path = diff_paths(path, &self.sqpack_base_path);
 
-        if relative_path.is_some() {
-            let file_name = path.file_name().unwrap().to_str().unwrap();
-            let archive_id = SqPackArchiveId::from_sqpack_file_name(file_name);
+        if let Some(x) = relative_path {
+            if !x.starts_with("..") && x.is_relative() {
+                let file_name = path.file_name().unwrap().to_str().unwrap();
+                let archive_id = SqPackArchiveId::from_sqpack_file_name(file_name);
 
-            let item = self.archives.get(&archive_id);
-            if let Some(x) = item {
-                return x.open(path);
+                let item = self.archives.get(&archive_id);
+                if let Some(x) = item {
+                    return x.open(path);
+                }
             }
         }
 
