@@ -1,6 +1,6 @@
 use widestring::WideCString;
 
-use crate::winapi::{FnDirectInput8Create, GetProcAddress, GetSystemDirectoryW, LoadLibraryW};
+use crate::winapi::{get_proc_address, FnDirectInput8Create, GetSystemDirectoryW, LoadLibraryW};
 
 #[no_mangle]
 #[allow(clippy::missing_safety_doc)]
@@ -12,7 +12,7 @@ pub unsafe extern "stdcall" fn DirectInput8Create(h_inst: u64, dw_version: u32, 
     let dinput8_path = format!("{}\\dinput8.dll", system_path);
 
     let dinput8 = LoadLibraryW(WideCString::from_str(dinput8_path).unwrap().as_ptr());
-    let direct_input_8_create: FnDirectInput8Create = std::mem::transmute(GetProcAddress(dinput8, "DirectInput8Create".as_ptr()));
+    let direct_input_8_create: FnDirectInput8Create = std::mem::transmute(get_proc_address(dinput8, "DirectInput8Create"));
 
     direct_input_8_create(h_inst, dw_version, riidltf, ppv_out, punk_outer)
 }

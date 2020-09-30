@@ -9,7 +9,7 @@ use log::{debug, error};
 use widestring::{WideCStr, WideCString};
 
 use crate::virtual_sqpack::{VirtualArchiveFileHandle, VirtualSqPackPackage};
-use crate::winapi::{FnCloseHandle, FnCreateFileW, FnReadFile, FnSetFilePointerEx, GetModuleHandleW, GetProcAddress, BOOL, HANDLE};
+use crate::winapi::{get_proc_address, FnCloseHandle, FnCreateFileW, FnReadFile, FnSetFilePointerEx, GetModuleHandleW, BOOL, HANDLE};
 
 static mut SQPACK_REDIRECTOR: Option<SqPackRedirector> = None;
 
@@ -30,7 +30,7 @@ pub struct SqPackRedirector {
 
 macro_rules! add_hook {
     ($lib: expr, $target_fn: ty, $detour: expr) => {{
-        let hook_address = GetProcAddress($lib, stringify!($target_fn)[2..].as_ptr());
+        let hook_address = get_proc_address($lib, &stringify!($target_fn)[2..]);
         let hook = GenericDetour::<$target_fn>::new(std::mem::transmute(hook_address), $detour)?;
         hook.enable()?;
 
