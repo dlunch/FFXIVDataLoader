@@ -186,8 +186,18 @@ impl SqPackRedirector {
                     }
 
                     1 // TRUE
+                } else if dw_move_method == 1 && li_distance_to_move == 0 {
+                    // FILE_CURRENT
+                    if !lp_new_file_pointer.is_null() {
+                        *lp_new_file_pointer = li_distance_to_move;
+                    }
+
+                    1
                 } else {
-                    error!("Unsupported SetFilePointerEx MoveMethod {}", dw_move_method);
+                    error!(
+                        "Unsupported SetFilePointerEx MoveMethod {} distance {}",
+                        dw_move_method, li_distance_to_move
+                    );
 
                     0
                 }
