@@ -83,6 +83,7 @@ impl SqPackRedirector {
 
     fn read_virtual_file(&self, handle: HANDLE, buf: &mut [u8]) -> u32 {
         let virtual_file = self.virtual_file_handles.get(&handle).unwrap();
+        debug!("read_virtual_file {} {} {}", handle, virtual_file.offset, buf.len());
 
         self.virtual_sqpack
             .read_virtual_archive_file(&virtual_file.handle, virtual_file.offset, buf)
@@ -110,7 +111,6 @@ impl SqPackRedirector {
         unsafe {
             let _self = SQPACK_REDIRECTOR.as_mut().unwrap();
             let path = PathBuf::from(WideCStr::from_ptr_str(lp_file_name).to_os_string());
-            debug!("CreateFile {:?}", path);
 
             if let Some(x) = _self.open_virtual_file(&path) {
                 x
@@ -137,7 +137,6 @@ impl SqPackRedirector {
     ) -> BOOL {
         unsafe {
             let _self = SQPACK_REDIRECTOR.as_ref().unwrap();
-            debug!("ReadFile {} {}", h_file, n_number_of_bytes_to_read);
 
             if _self.is_virtual_file_handle(h_file) {
                 let buf = slice::from_raw_parts_mut(lp_buffer, n_number_of_bytes_to_read as usize);
@@ -174,7 +173,6 @@ impl SqPackRedirector {
     ) -> BOOL {
         unsafe {
             let _self = SQPACK_REDIRECTOR.as_mut().unwrap();
-            debug!("SetFilePointerEx {} {}, {}", h_file, li_distance_to_move, dw_move_method);
 
             if _self.is_virtual_file_handle(h_file) {
                 if dw_move_method == 0 {
