@@ -81,12 +81,16 @@ impl SqPackRedirector {
         self.virtual_file_handles.contains_key(&handle)
     }
 
-    fn read_virtual_file(&self, handle: HANDLE, buf: &mut [u8]) -> u32 {
-        let virtual_file = self.virtual_file_handles.get(&handle).unwrap();
+    fn read_virtual_file(&mut self, handle: HANDLE, buf: &mut [u8]) -> u32 {
+        let virtual_file = self.virtual_file_handles.get_mut(&handle).unwrap();
         debug!("read_virtual_file {} {} {}", handle, virtual_file.offset, buf.len());
 
-        self.virtual_sqpack
-            .read_virtual_archive_file(&virtual_file.handle, virtual_file.offset, buf)
+        let bytes_read = self
+            .virtual_sqpack
+            .read_virtual_archive_file(&virtual_file.handle, virtual_file.offset, buf);
+        virtual_file.offset += buf.len() as u64;
+
+        bytes_read
     }
 
     fn close_virtual_file(&mut self, handle: HANDLE) {
@@ -136,7 +140,7 @@ impl SqPackRedirector {
         lp_overlapped: u64,
     ) -> BOOL {
         unsafe {
-            let _self = SQPACK_REDIRECTOR.as_ref().unwrap();
+            let _self = SQPACK_REDIRECTOR.as_mut().unwrap();
 
             if _self.is_virtual_file_handle(h_file) {
                 let buf = slice::from_raw_parts_mut(lp_buffer, n_number_of_bytes_to_read as usize);
