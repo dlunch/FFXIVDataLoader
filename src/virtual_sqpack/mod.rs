@@ -52,12 +52,15 @@ impl VirtualSqPackPackage {
 
         if let Some(x) = relative_path {
             if !x.starts_with("..") && x.is_relative() {
-                let file_name = path.file_name().unwrap().to_str().unwrap();
-                let archive_id = SqPackArchiveId::from_sqpack_file_name(file_name);
+                let extension = path.extension().unwrap().to_str().unwrap();
+                if extension == "index" || extension.starts_with("dat") {
+                    let file_name = path.file_name().unwrap().to_str().unwrap();
+                    let archive_id = SqPackArchiveId::from_sqpack_file_name(file_name);
 
-                let item = self.archives.get(&archive_id);
-                if let Some(x) = item {
-                    return x.open(path);
+                    let item = self.archives.get(&archive_id);
+                    if let Some(x) = item {
+                        return x.open(path);
+                    }
                 }
             }
         }
