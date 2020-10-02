@@ -48,7 +48,7 @@ impl VirtualSqPackArchive {
             archive_id,
             index,
             dat,
-            dat_index: new_dat_count,
+            dat_index: new_dat_count - 1,
         })
     }
 
