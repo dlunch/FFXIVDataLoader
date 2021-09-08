@@ -27,7 +27,7 @@ unsafe fn initialize() {
 
         // ffxiv_dx11.exe restarts itself with reduced privileges, making debugging harder.
         // but it doesn't restart if environment is darwin, so we mock darwin by writing flag value.
-        let is_darwin_addr = 0x141B2F405u64 - 0x140000000; // for rev5516889
+        let is_darwin_addr = 0x141BD2405u64 - 0x140000000; // for rev6720372
         let ffxiv_base = crate::winapi::GetModuleHandleW(std::ptr::null());
         let is_darwin_ptr_addr = ffxiv_base + is_darwin_addr;
         let is_darwin_ptr: *mut u8 = std::mem::transmute(is_darwin_ptr_addr);
