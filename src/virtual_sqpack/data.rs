@@ -1,43 +1,84 @@
-use std::collections::HashMap;
+use std::cmp::min;
+use std::collections::BTreeMap;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-pub struct VirtualSqPackData {
-    header: Vec<u8>,
-    next_offset: u32,
-    files: HashMap<u32, PathBuf>,
+struct SqPackDataFile {
+    file: PathBuf,
 }
 
-impl VirtualSqPackData {
-    pub fn new(header_template: Vec<u8>) -> Self {
-        let header_len = header_template.len() as u32;
-        Self {
-            header: header_template,
-            next_offset: header_len,
-            files: HashMap::new(),
+impl SqPackDataFile {
+    pub fn new(file: &Path) -> Self {
+        Self { file: file.into() }
+    }
+
+    pub fn size(&self) -> io::Result<u64> {
+        Ok(fs::metadata(&self.file)?.len() + 0x100)
+    }
+
+    #[allow(unused_variables)] // TODO
+    pub fn read(&self, offset: u64, buf: &mut [u8]) -> io::Result<u64> {
+        self.size()
+    }
+}
+
+enum SqPackDataItem {
+    Header(Vec<u8>),
+    File(SqPackDataFile),
+}
+
+impl SqPackDataItem {
+    pub fn read(&self, offset: u64, buf: &mut [u8]) -> io::Result<u64> {
+        match self {
+            Self::Header(data) => {
+                let len = min(data.len() - offset as usize, buf.len());
+                buf[..len].copy_from_slice(&data[offset as usize..offset as usize + len]);
+
+                Ok(len as u64)
+            }
+            Self::File(file) => file.read(offset, buf),
         }
     }
 
-    pub fn write(&mut self, path: &Path) -> io::Result<u32> {
-        let file_size = fs::metadata(path)?.len();
-        let size_on_data = file_size as u32 + 0x100; // TODO temp header len
+    pub fn size(&self) -> io::Result<u64> {
+        match self {
+            SqPackDataItem::Header(header) => Ok(header.len() as u64),
+            SqPackDataItem::File(file) => file.size(),
+        }
+    }
+}
 
-        let offset = self.next_offset;
-        self.next_offset += size_on_data;
-        self.files.insert(offset, path.into());
+pub struct VirtualSqPackData {
+    data: BTreeMap<u64, SqPackDataItem>,
+}
+
+impl VirtualSqPackData {
+    pub fn new(header_template: &[u8]) -> Self {
+        let mut data = BTreeMap::new();
+
+        let header = SqPackDataItem::Header(header_template.to_vec())
+        data.insert(0, header);
+
+        Self { data }
+    }
+
+    pub fn write(&mut self, file: &Path) -> io::Result<u64> {
+        let last = self.data.iter().last().unwrap();
+        let offset = last.0 + last.1.size()?;
+
+        self.data.insert(offset, SqPackDataItem::File(SqPackDataFile::new(file)));
 
         Ok(offset)
     }
 
-    pub fn read(&self, offset: u64, buf: &mut [u8]) -> u32 {
-        let offset = offset as usize;
-        if offset < self.header.len() {
-            buf.copy_from_slice(&self.header[offset..offset + buf.len()]);
+    pub fn read(&self, offset: u64, buf: &mut [u8]) -> io::Result<u32> {
+        let mut read_offset = 0;
 
-            buf.len() as u32
-        } else {
-            panic!()
+        for (&k, v) in self.data.range(offset..offset + buf.len() as u64) {
+            read_offset += v.read(offset + read_offset - k, &mut buf[read_offset as usize..])?;
         }
+
+        Ok(read_offset as u32)
     }
 }

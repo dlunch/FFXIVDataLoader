@@ -2,6 +2,7 @@ mod archive;
 mod data;
 
 use std::collections::{hash_map::Entry, HashMap};
+use std::io;
 use std::path::{Path, PathBuf};
 
 use log::debug;
@@ -68,7 +69,7 @@ impl VirtualSqPackPackage {
         None
     }
 
-    pub fn read_virtual_archive_file(&self, handle: &VirtualArchiveFileHandle, offset: u64, buf: &mut [u8]) -> u32 {
+    pub fn read_virtual_archive_file(&self, handle: &VirtualArchiveFileHandle, offset: u64, buf: &mut [u8]) -> io::Result<u32> {
         let archive = self.archives.get(&handle.0).unwrap();
 
         archive.read(&handle.1, offset, buf)
