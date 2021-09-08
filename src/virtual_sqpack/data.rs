@@ -57,7 +57,7 @@ impl VirtualSqPackData {
     pub fn new(header_template: &[u8]) -> Self {
         let mut data = BTreeMap::new();
 
-        let header = SqPackDataItem::Header(header_template.to_vec())
+        let header = SqPackDataItem::Header(header_template.to_vec());
         data.insert(0, header);
 
         Self { data }
