@@ -722,7 +722,7 @@ dependencies = [
 [[package]]
 name = "sqpack"
 version = "0.1.0"
-source = "git+https://github.com/dlunch/sqpack#f6503fc16ff379076c8aaa8c54801befd0b162bd"
+source = "git+https://github.com/dlunch/sqpack#bdc8a8b0f2483892fa5462a940de1cab3533b5a3"
 dependencies = [
  "async-std",
  "async-trait",
