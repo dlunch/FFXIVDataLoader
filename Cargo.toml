@@ -16,6 +16,6 @@ widestring = { version = "^0.4" }
 log = { version = "^0.4" }
 pretty_env_logger = { version = "^0.4" }
 walkdir = { version = "^2.3" }
-pathdiff = { version = "0.2.0" }
+pathdiff = { version = "0.2.1" }
 
 sqpack = { version = "^0.1", git = "https://github.com/dlunch/sqpack" }
