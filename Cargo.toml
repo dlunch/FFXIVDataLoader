@@ -12,7 +12,7 @@ test_local = []
 
 [dependencies]
 detour = { version = "0.7.1", default-features = false }
-widestring = { version = "^0.4" }
+widestring = { version = "^0.5" }
 log = { version = "^0.4" }
 pretty_env_logger = { version = "^0.4" }
 walkdir = { version = "^2.3" }
